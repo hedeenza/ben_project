@@ -1,3 +1,6 @@
+library(tidyverse)
+library(stringr)
+
 # Loading the csv back in 
 mtg_cards <- read.csv("Data/mtg_cards.csv")
 
@@ -32,7 +35,7 @@ release_graph <- release_graphing %>%
 
 release_graph
 
-ggsave(plot = release_graph, "Graphs/Release_Timeline.png", width = 40, height = 15, units = "cm")
+    #ggsave(plot = release_graph, "Graphs/Release_Timeline.png", width = 40, height = 15, units = "cm")
 
 
 "1993 - 97 = beginnings
@@ -74,8 +77,327 @@ artist_graph <- artist_top %>%
 
 artist_graph
 
-ggsave(plot = artist_graph, "Graphs/Artist_Contribution.png", width = 16, height = 9, units = "cm")
+    # ggsave(plot = artist_graph, "Graphs/Artist_Contribution.png", width = 16, height = 9, units = "cm")
+
+
+# Land by Year
+table(mtg_cards$type_line) %>% as.data.frame() %>% arrange(desc(Freq))
+
+just_lands <- mtg_cards %>% filter(type_line == "Land")
+land_timeline <- just_lands %>% select(name, released_at) %>% separate(released_at, c("Year", "Month", "Day")) %>% arrange(Year)
+land_graph <- land_timeline %>% group_by(Year) %>% count(Year)
+
+land_plot <- land_graph %>% 
+  ggplot(aes(x = Year, y = n, fill = Year)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 12),
+        legend.position = "none") +
+  ylab("Number of Lands Released")
+
+
+land_plot
+
+
+# Lands in 2022
+lands_2022 <- just_lands %>% 
+                select(name, set_name, released_at) %>% 
+                separate(released_at, c("Year", "Month", "Day")) %>% 
+                filter(Year == 2022) %>%
+                arrange(Month, Day, set_name)
+
+lands_2022_graph <- lands_2022 %>% 
+                      group_by(set_name) %>%
+                      count(Day)
+
+lands_2022_plot <- lands_2022_graph %>%
+  ggplot(aes(x = set_name, y = n, fill = set_name)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 9),
+        legend.position = "none") +
+  ylab("Number of Lands Released") +
+  xlab("") + 
+  
+  scale_x_discrete(labels = c("Commander Legends: Battle for Baldur's Gate" = "Commander Legends: \n Battle for Baldur's Gate",
+                              "Dominaria United Commander" = "Dominaria United \n Commander",
+                              "Heads I Win, Tails You Lose" = "Heads I Win, \n Tails You Lose", 
+                              "Kamigawa: Neon Dynasty" = "Kamigawa: \n Neon Dynasty",
+                              "Neon Dynasty Commander" = "Neon Dynasty \n Commander",
+                              "New Capenna Commander" = "New Capenna \n Commander",
+                              "Warhammer 40,000 Commander" = "Warhammer 40,000 \n Commander"))
+
+lands_2022_plot
+
+# Who did the lands of 2022?
+land_art_2022 <- 
+  mtg_cards %>%
+  separate(released_at, c("Year", "Month", "Day")) %>%
+  filter(type_line == "Land" & Year == "2022") %>%
+  count(artist) %>%
+  arrange(desc(n))
+  
+land_art_2022_sorted <- 
+  land_art_2022 %>%
+  mutate(Count = fct_reorder(artist, n, .desc = T))
+
+land_art_2022_plot <-
+  land_art_2022_sorted %>%
+  ggplot(aes(x = Count, y = n, fill = Count)) +
+    geom_col() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 9),
+        legend.position = "none") +
+    ylab("Number of Land Arts") +
+    xlab("")
+    
+
+land_art_2022_plot
+    
+# Just John Avon
+just_ja <-
+  mtg_cards %>%
+  separate(released_at, c("Year", "Month", "Day")) %>%
+  filter(artist == "John Avon")
+
+just_ja_timeline <-
+  table(just_ja$Year) %>% 
+  as.data.frame() %>% 
+  arrange()
+
+just_ja_plot <-
+  just_ja_timeline %>%
+  ggplot(aes(x = Var1, y = Freq, fill = Var1)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 9),
+        legend.position = "none") +
+  ylab("Number of Arts") +
+  xlab("")
+
+just_ja_plot
 
 
 
-table(mtg_cards$artist) %>% as.data.frame() %>% arrange(Var1)
+
+
+# Reserved List by Year
+reserved_years <- mtg_cards %>% 
+  filter(reserved != FALSE) %>% 
+  select(name, set_name, released_at) %>% 
+  separate(released_at, c("Year", "Month", "Day"))
+
+reserved_timeline <- reserved_years %>% group_by(Year) %>% count(Day)
+
+reserved_years %>% nrow()
+
+reserved_timeline_plot <- reserved_timeline %>%
+  ggplot(aes(x = Year, y = n, fill = Year)) + 
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 9),
+        legend.position = "none") +
+  ylab("Number on the Reserved List") +
+  xlab("")
+
+  reserved_timeline_plot
+
+reserved_month <- reserved_years %>% group_by(Month) %>% count(Month) %>% arrange(desc(n))
+sum(reserved_month$n)
+
+# Which months had the most cards on the reserve list?
+reserved_month_plot <- reserved_month %>% 
+  ggplot(aes(x = Month, y = n, fill = Month)) +
+  geom_col(position = position_dodge()) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 0.5, vjust = 0.5, size = 12),
+        legend.position = "none"
+        #panel.background = element_blank()
+  ) +
+  ylab("Number of Cards on the Reserved List") +
+  xlab("") +
+  scale_x_discrete(labels = c('01' = "Jan", "02" = "Feb", "03" = "Mar", "04" = "Apr", "05" = "May", "06" = "Jun",
+                              "07" = "Jul", "08" = "Aug", "09" = "Sep", "10" = "Oct", "11" = "Nov", "12" = "Dec")) 
+
+reserved_month_plot
+    # ggsave(plot = reserved_month_plot, "Graphs/ReservedList_Months.png", width = 16, height = 9, units = "cm")
+
+# What sets were released during those peak reserved list count?
+reserved_years %>% 
+  filter(Month == '06' | Month == '09' | Month == '10') %>% 
+  select(set_name, Year, Month) %>%
+  unique() %>% arrange(Month, Year, set_name)
+
+# Which sets have the most reserved list cards?
+reserved_sets <- table(reserved_years$set_name) %>% as.data.frame() %>% mutate(Count = fct_reorder(Var1, Freq, .desc = T))
+
+reserved_sets_plot <- reserved_sets %>% 
+  ggplot(aes(x = Count, y = Freq, fill = Count)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 6),
+        legend.position = "none") +
+  ylab("Reserved List Cards") +
+  xlab("") + 
+  scale_x_discrete(labels = c("Duel Decks: Phyrexia vs. the Coalition" = "Duel Decks: \n Phyrexia vs. the Coalition"))
+
+  reserved_sets_plot
+
+  #  ggsave(plot = reserved_sets_plot, "Graphs/ReservedList_Sets.png", width = 16, height = 9, units = "cm")
+
+
+# Rarity Comparison Mirage and Visions
+rarity_comparison <- mtg_cards %>% 
+  filter(set_name == "Mirage" | set_name == "Visions") %>%
+  group_by(set_name) %>%
+  count(rarity)
+
+rarity_comparison %>% ggplot(aes(x = set_name, y = n, fill = rarity)) +
+  geom_col(position = position_dodge()) +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5, size = 12),
+        legend.position = "right") +
+  ylab("Number of Cards") +
+  xlab("")
+
+# Just the reserved list from Mirage and Visions
+rarity_comparison_reserved <- mtg_cards %>% 
+  filter(set_name == "Mirage" | set_name == "Visions") %>%
+  filter(reserved != FALSE) %>%
+  group_by(set_name) %>%
+  count(rarity)
+
+rarity_comparison_reserved %>% ggplot(aes(x = set_name, y = n, fill = rarity)) +
+  geom_col(position = position_dodge()) +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5, size = 12),
+        legend.position = "right") +
+  ylab("Number of Cards") +
+  xlab("")
+
+
+# Rarity by Year 
+rarity_year <- mtg_cards %>% 
+  separate(released_at, c("Year", "Month", "Day")) %>%
+  group_by(Year) %>%
+  count(rarity)
+rarity_year_plot <-
+  rarity_year %>%
+  ggplot(aes(x = Year, y = n, fill = rarity)) +
+  geom_col(width = 0.7, position = position_dodge()) +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5, size = 8),
+        legend.position = "right") +
+  ylab("Number of Cards") +
+  xlab("") +
+  scale_y_continuous(breaks = c(100,200,300,400,500,600,700,800,900,1000,1100,1200,1300),
+                     labels = c('100','200','300','400','500','600','700','800','900','1000','1100','1200','1300'))
+
+rarity_year_plot
+
+  #  ggsave(plot = rarity_year_plot, "Graphs/Rarity_Year.png", width = 40, height = 10, units = "cm")
+
+
+# Rarity before and after everything went off the rails
+rarity_count <-
+  mtg_cards %>%
+  separate(released_at, c("Year", "Month", "Day")) %>%
+  filter(Year == "2019" | Year == "2022") %>%
+  group_by(Year) %>%
+  count(rarity) %>%
+  as.data.frame()
+
+rarity_percent <- 
+  rarity_count %>%
+  group_by(Year) %>%
+  mutate(Total = sum(n),
+         Percent = n/Total)
+
+rarity_percent_plot <-
+  rarity_percent %>%
+  ggplot(aes(x = Year, y = Percent, fill = rarity)) +
+  geom_col(width = 0.7, position = position_dodge()) +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5, size = 12),
+        legend.position = "right") +
+  ylab("Percent of Total Cards Released") +
+  xlab("")
+
+rarity_percent_plot
+
+  #  ggsave(plot = rarity_percent_plot, "Graphs/Rarity_Rails.png", width = 16, height = 16, units = "cm")
+
+
+# Rarity Regression 
+rarity_timeline <- 
+  mtg_cards %>%
+  separate(released_at, c("Year", "Month", "Day")) %>%
+  group_by(Year) %>%
+  count(rarity) %>%
+  mutate(Total = sum(n),
+         Percent = n/Total) %>%
+  select(Year, rarity, Percent) %>%
+  print()
+
+rarity_wide <- 
+  rarity_timeline %>%
+  pivot_wider(names_from = rarity, values_from = Percent) %>%
+  print()
+
+rarity_timeline_clean <- # this will become a kable table
+  mtg_cards %>%
+  separate(released_at, c("Year", "Month", "Day")) %>%
+  group_by(Year) %>%
+  count(rarity) %>%
+  mutate(Total = sum(n),
+         Percent = round((n/Total)*100,1)) %>%
+  select(Year, rarity, Percent) %>%
+  pivot_wider(names_from = rarity, values_from = Percent) %>%
+  select(Year, common, uncommon, rare, mythic, special, bonus) %>%
+  mutate_all(~replace(., is.na(.), 0)) %>%
+  mutate(Sum = sum(common, rare, uncommon, special, mythic, bonus)) %>%
+  print(n=31)
+
+# When is there a higher percentage of uncommon than common?
+rarity_timeline_clean %>% filter(uncommon - common >= 0) %>% print()
+
+# When is there a higher percentage of rare than common?
+rarity_timeline_clean %>% filter(rare - common >= 0) %>% print()
+
+# When is there a higher percentage of rare than uncommon?
+rarity_timeline_clean %>% filter(rare - uncommon >= 0) %>% print()
+
+
+# Regressions of rarity by year 
+rarity_transformed <- 
+  rarity_timeline_clean %>% 
+  transform(Year = as.numeric(Year))
+
+str(rarity_transformed)
+
+lm(mythic ~ Year, data = rarity_transformed)
+
+
+
+
+# Rarity Descriptive Statistics
+rarity_summmary <- 
+  summary(rarity_timeline_clean) %>% 
+  as.data.frame() %>%
+  separate(Freq, sep = ":", c("Value", "Number"))
+
+rarity_summary_clean <- rarity_summmary[-c(1:6),] %>% print()
+
+rarity_trim_rarity <- 
+  str_trim(rarity_summary_clean$Var2, side = "both")
+
+rarity_trim_measure <- 
+  str_trim(rarity_summary_clean$Value, side = "both")
+
+rarity_trim_value <- 
+  str_trim(rarity_summary_clean$Number, side = "both") %>%
+  str_remove_all("0+$") %>%
+  str_replace_all("[:punct:]$", ".0")
+
+rarity_trim <- 
+  data.frame(rarity_trim_rarity, rarity_trim_measure, rarity_trim_value)
+
+rarity_summary_final <- # To become a kable table
+  rarity_trim %>%
+  pivot_wider(names_from = rarity_trim_rarity, values_from = rarity_trim_value) %>% print()
+
+
+# What's the "Special" Card?
+mtg_cards %>% filter(rarity == "special") %>% select(name, released_at, set_name, rarity) %>% arrange(released_at)
+
+
+
