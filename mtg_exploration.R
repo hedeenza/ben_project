@@ -4,6 +4,8 @@ library(stringr)
 # Loading the csv back in 
 mtg_cards <- read.csv("Data/mtg_cards.csv")
 
+
+
 # Exploring the data
 table(mtg_cards$artist) %>% as.data.frame() %>% arrange(desc(Var1))
 
@@ -162,7 +164,7 @@ just_ja_timeline <-
   as.data.frame() %>% 
   arrange()
 
-just_ja_plot <-
+just_ja_plot <- # Timeline of John Avon Arts
   just_ja_timeline %>%
   ggplot(aes(x = Var1, y = Freq, fill = Var1)) +
   geom_col() +
@@ -174,8 +176,22 @@ just_ja_plot <-
 just_ja_plot
 
 
+just_ja_type <- 
+  str_split_fixed(just_ja$type_line, " — ", 2) %>%
+  print()
 
-
+  ja_type_clean <- table(just_ja_type[,1]) %>% as.data.frame() %>% arrange()
+  
+  ja_type_plot <- # how many of each type of card John Avon did art for
+    ja_type_clean %>%
+      ggplot(aes(x = Var1, y = Freq, fill = Var1)) + 
+      geom_col() +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 9),
+            legend.position = "none") +
+      ylab("Number of Arts") +
+      xlab("")
+  
+  ja_type_plot
 
 # Reserved List by Year
 reserved_years <- mtg_cards %>% 
@@ -328,6 +344,31 @@ rarity_timeline <-
   select(Year, rarity, Percent) %>%
   print()
 
+    # Graphing Rarity over Time
+    rarity_timeline_plot <- 
+      rarity_timeline %>%
+      filter(rarity != "bonus" & rarity != "special") %>%
+      ggplot(aes(x = Year, y = Percent, group = rarity, color = rarity)) +
+      scale_y_continuous(breaks = c(.05,.10,.15,.20,.25,.30,.35,.40,.45,.50),
+                         labels = c("5%", "10%", "15%", "20%", "25%", "30%", "35%", "40%", "45%", "50%")) +
+      scale_color_manual(name = "Rarity",
+                         breaks = c('common', 'uncommon', 'rare', 'mythic', 'special'),
+                         values = c(rare = "#D3202A", uncommon = "#00733E", mythic = "#0E68AB", special = "purple", common = "#150B00")) +  
+      geom_line(linewidth = 0.25) +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+      xlab("Year") +
+      ylab("Percent of Released Cards")
+      
+      #annotate("rect", xmin = 1, xmax = 5.25, ymin = 0, ymax = 0.475, fill = "blue", alpha = 0.05) +
+      #annotate("rect", xmin = 7.75, xmax = 9.25, ymin = 0, ymax = 0.475, fill = "blue", alpha = 0.05) +
+      #annotate("rect", xmin = 28.75, xmax = 31.25, ymin = 0, ymax = 0.475, fill = "blue", alpha = 0.05)
+      
+    rarity_timeline_plot
+    
+    ggsave(plot = rarity_timeline_plot, "Graphs/Rarity_Line_Timeline.png", width = 16, height = 9, units = "cm", dpi = 300)
+
+?geom_line
+    
 rarity_wide <- 
   rarity_timeline %>%
   pivot_wider(names_from = rarity, values_from = Percent) %>%
@@ -400,4 +441,42 @@ rarity_summary_final <- # To become a kable table
 mtg_cards %>% filter(rarity == "special") %>% select(name, released_at, set_name, rarity) %>% arrange(released_at)
 
 
+# Sets per Year
+year_set <- 
+  mtg_cards %>%
+  separate(released_at, c("Year", "Month", "Day"))
 
+unique_sets <- 
+  table(year_set$set_name) %>% 
+  as.data.frame() %>% 
+  arrange() %>% print()
+
+names(unique_sets) <- c("set_name", "Freq")
+
+set_years <- 
+  year_set %>%
+  select(Year, set_name)
+
+merged_sets_timeline <- 
+  merge(unique_sets, set_years, .by = set_name, all = TRUE) %>% 
+  select(set_name, Year) %>%
+  unique() %>%
+  arrange(Year) %>% print()
+
+set_release_timeline <- 
+  table(merged_sets_timeline$Year) %>% 
+  data.frame() %>% 
+  arrange()
+
+set_release_timeline_plot <- 
+  set_release_timeline %>%
+  ggplot(aes(x = Var1, y = Freq, fill = Var1)) +
+  geom_col() +
+  xlab("Year") + 
+  ylab("Number of Sets Released") +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+
+set_release_timeline_plot
+
+# Add a box plot of the rarity descriptive statistics
